@@ -52,20 +52,35 @@ var app = (function () {
             var canvas = document.getElementById("canvas");
             canvas.addEventListener("click",function(evento){
             	var punto = getMousePosition(evento);
-            	console.log(punto);
-            	app.publishPoint(punto.x,punto.y);
+            	app.publishPoint(punto.x,punto.y,$("#canvasID").val());
             	
             })
             //websocket connection
-            connectAndSubscribe();
+            //connectAndSubscribe();
         },
 
-        publishPoint: function(px,py){
+        publishPoint: function(px,py,canvasID){
             var pt=new Point(px,py);
             console.info("publishing point at "+pt);
 
             //publicar el evento
-            stompClient.send("/topic/newpoint",{},JSON.stringify(pt));
+            stompClient.send("/topic/newpoint."+canvasID,{},JSON.stringify(pt));
+        },
+        
+        connectAndSubscribe: function (canvasID) {
+            console.info('Connecting to WS...');
+            var socket = new SockJS('/stompendpoint');
+            stompClient = Stomp.over(socket);
+            
+            //subscribe to /topic/TOPICXX when connections succeed
+            stompClient.connect({}, function (frame) {
+                console.log('Connected: ' + frame);
+                stompClient.subscribe('/topic/newpoint.'+canvasID, function (eventbody) {
+                    var evento = JSON.parse(eventbody.body);
+                	addPointToCanvas(new Point(evento["x"],evento["y"]));
+                });
+            });
+
         },
 
         disconnect: function () {
